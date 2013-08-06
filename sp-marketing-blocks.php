@@ -38,6 +38,9 @@ class SPMarketingBlocks {
 	 */
 	function __construct() {
             
+            //Add an image size
+            add_image_size('marketing-block-thumb', 240, 180, true);
+            
             // Load plugin text domain
             add_action( 'init', array( $this, 'plugin_textdomain' ) );
             
@@ -47,10 +50,6 @@ class SPMarketingBlocks {
             //Add META boxes
             add_action( 'add_meta_boxes', array( $this, 'add_boxes' ) );
             add_action( 'save_post', array( $this, 'save_meta_data' ) );
-            
-            // Register admin styles and scripts
-            add_action( 'admin_print_styles', array( $this, 'register_admin_styles' ) );
-            add_action( 'admin_enqueue_scripts', array( $this, 'register_admin_scripts' ) );
 
             // Register site styles and scripts
             add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_styles' ) );
@@ -116,41 +115,29 @@ class SPMarketingBlocks {
          */
         
         public function save_meta_data( $post_id ) {
-            //print '<pre>';
-            //die( print_r($_POST['sp_marketing_blocks_data']) );
-            if( wp_verify_nonce( $_POST['sp_marketing_blocks_data'], 'save_data' ) &&  current_user_can( 'edit_post', $post_id ) ) {
-                if( is_array( $_POST['fields'] ) ) {
-                    foreach( $_POST['fields'] as $field => $value ) {
-                        update_post_meta( $post_id, $field, wp_kses( $value, array() ) );
-                    }
-                }
+            global $post;
+            switch($post->post_type) {
+               case 'sp_marketing_blocks' : if( wp_verify_nonce( $_POST['sp_marketing_blocks_data'], 'save_data' ) &&  current_user_can( 'edit_post', $post_id ) ) {
+                                                if( isset( $_POST['fields'] ) && is_array( $_POST['fields'] ) ) {
+                                                    foreach( $_POST['fields'] as $field => $value ) {
+                                                        update_post_meta( $post_id, $field, wp_kses( $value, array() ) );
+                                                    }
+                                                }
+                                            } else {
+                                                wp_die( 'You do not have sufficient permission to perform this operation.' );
+                                            }
+                                            
+                                            break;
+            
             }
         }
-
-	/**
-	 * Registers and enqueues admin-specific styles.
-	 */
-	public function register_admin_styles() {
-
-            wp_enqueue_style( 'plugin-name-admin-styles', plugins_url( 'sp-marketing-blocks/css/admin.css' ) );
-
-	} // end register_admin_styles
-
-	/**
-	 * Registers and enqueues admin-specific JavaScript.
-	 */
-	public function register_admin_scripts() {
-
-            wp_enqueue_script( 'plugin-name-admin-script', plugins_url( 'sp-marketing-blocks/js/admin.js' ), array('jquery') );
-
-	} // end register_admin_scripts
 
 	/**
 	 * Registers and enqueues plugin-specific styles.
 	 */
 	public function register_plugin_styles() {
 
-            wp_enqueue_style( 'plugin-name-plugin-styles', plugins_url( 'sp-marketing-blocks/css/display.css' ) );
+            wp_enqueue_style( 'sp-marketing-block-style', plugins_url( 'sp-marketing-blocks/css/display.css' ) );
 
 	} // end register_plugin_styles
 
@@ -159,7 +146,7 @@ class SPMarketingBlocks {
 	 */
 	public function register_plugin_scripts() {
 
-            wp_enqueue_script( 'plugin-name-plugin-script', plugins_url( 'sp-marketing-blocks/js/display.js' ), array('jquery') );
+            wp_enqueue_script( 'sp-marketing-block-script', plugins_url( 'sp-marketing-blocks/js/display.js' ), array('jquery') );
 
 	} // end register_plugin_scripts
         
@@ -170,6 +157,9 @@ class SPMarketingBlocks {
          */
         
         public function theme( $path, $variables ) {
+            //Filter hooks for filtering Marketing Block templates or META boxes
+            $path = apply_filters('spmb_template_path', $path, $path);
+            $variables = apply_filters('spmp_template_vars', $variables, $variables);
             include($path);  
         } // End theme
         
@@ -186,6 +176,7 @@ class SPMarketingBlocks {
                             'post_status' => 'publish',
                             'posts_per_page' => $posts_per_page,
                             'orderby' => 'meta_value_num',
+                            'order' => 'ASC',
                             'meta_key' => 'sp_marketing_block_weight'
                         )
                     );
@@ -196,14 +187,21 @@ class SPMarketingBlocks {
 	public function display_blocks($atts) {
             //Init vars
             $content = '';
-            $number = $atts['number'];
-            $layout = $atts['layout'];
+            //Process shortcode arguments
+            shortcode_atts( array(
+                    'number' => 3,
+                    'layout' => 'horizontal',
+            ), $atts );
             //Fetch blocks 
-            $blocks = $this->get_blocks($number);
+            $blocks = $this->get_blocks( $atts['number'] );
             //Create HTML content with our vars
+            $content .= '<div class="marketing-blocks '.$atts['layout'].'">';
             foreach($blocks as $block) {
-               $content .= $this->theme('views/display.php', $block);
+                ob_start();
+                $this->theme('views/display.php', $block);
+                $content .= ob_get_clean();
             }
+            $content .= '</div>';
             return $content;
 	} // end display_blocks
 

@@ -1,1 +1,27 @@
 /* This stylesheet is used to style the public view of the plugin. */
+
+/*Layouts*/
+
+.marketing-blocks.horizontal .marketing-block {
+    float:left;
+    width:30%;
+    margin:0 3.3% 0 0;
+}
+
+.marketing-blocks.vertical .marketing-block {
+    width:100%;
+    clear:both;
+    margin:0 0 2% 0;
+}
+
+/*Basic Theme*/
+
+.marketing-block .block-title {
+    margin:0 0 .5em 0;
+}
+
+.marketing-block .block-thumbnail img {
+    border:none; /*Just double checking - IE sucks*/
+    max-width: 100%;
+    height:auto;
+}
